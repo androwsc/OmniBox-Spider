@@ -14,7 +14,7 @@ try {
 const WEB_SITE_CONFIG = process.env.WEB_SITE_WOGG || "https://wogg.xxooo.cf;https://wogg.333232.xyz;https://www.wogg.net;https://wogg4k.333232.xyz;";
 const WEB_SITES = WEB_SITE_CONFIG.split(';').map(url => url.trim()).filter(url => url);
 // 筛选配置
-const FILTERS_WOGG = process.env.FILTERS_WOGG || "https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/%E9%85%8D%E7%BD%AE/%E7%AD%9B%E9%80%89/wogg.json";
+const FILTERS = process.env.FILTERS_WOGG || "https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/%E9%85%8D%E7%BD%AE/%E7%AD%9B%E9%80%89/wogg.json";
 // 读取环境变量：支持多个网盘类型，用分号分割
 const DRIVE_TYPE_CONFIG = (process.env.DRIVE_TYPE_CONFIG || "quark;uc").split(';').map(t => t.trim()).filter(t => t);
 // 读取环境变量：线路名称和顺序，用分号分割
@@ -85,7 +85,7 @@ function getBaseUrl() {
  * 筛选配置
  */
 async function getDynamicFilters() {
-  const config = FILTERS_WOGG;
+  const config = FILTERS;
   const defaultFilters = {};
 
   if (config) {
