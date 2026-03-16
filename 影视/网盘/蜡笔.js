@@ -2,7 +2,7 @@
 // @author 
 // @description 刮削：支持，弹幕：支持，播放记录：支持
 // @dependencies: axios, cheerio
-// @version 1.0.0
+// @version 1.0.1
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/网盘/蜡笔.js
 
 // 引入 OmniBox SDK
@@ -25,7 +25,7 @@ const fs = require("fs");
 
 // ==================== 配置区域 ====================
 // 网站地址(可以通过环境变量配置,支持多个域名用;分割)
-const WEB_SITE_CONFIG = process.env.WEB_SITE_MUOU || "http://fmao.shop;";
+const WEB_SITE_CONFIG = process.env.WEB_SITE_LABI || "http://fmao.shop;";
 const WEB_SITES = WEB_SITE_CONFIG.split(';').map(url => url.trim()).filter(url => url);
 // 筛选配置: 环境变量 -> 本地文件 -> 远程链接
 const FILTERS_PATH_REMOTE = "https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/blob/main/%E9%85%8D%E7%BD%AE/%E7%AD%9B%E9%80%89/labi.json";

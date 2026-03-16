@@ -2,7 +2,7 @@
 // @author
 // @description 刮削：支持，弹幕：支持，播放记录：支持
 // @dependencies: axios, cheerio
-// @version 1.0.0
+// @version 1.0.1
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/网盘/至臻.js
 
 // 引入 OmniBox SDK
@@ -25,7 +25,7 @@ const fs = require("fs");
 
 // ==================== 配置区域 ====================
 // 网站地址(可以通过环境变量配置,支持多个域名用;分割)
-const WEB_SITE_CONFIG = process.env.WEB_SITE_MUOU || "http://www.miqk.cc;https://www.mihdr.top;https://mihdr.top;";
+const WEB_SITE_CONFIG = process.env.WEB_SITE_ZHIZHEN || "http://www.miqk.cc;https://www.mihdr.top;https://mihdr.top;";
 const WEB_SITES = WEB_SITE_CONFIG.split(";")
   .map((url) => url.trim())
   .filter((url) => url);
