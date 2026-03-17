@@ -595,7 +595,7 @@ async function detail(params, context) {
     try {
       const currentItem = data.list[0] || {};
       const vodId = String(currentItem.vod_id || currentItem.VodID || videoId);
-      const metadata = await OmniBox.getDriveMetadata(vodId);
+      const metadata = await OmniBox.getScrapeMetadata(vodId);
       const scrapeData = metadata?.scrapeData || null;
       const videoMappings = metadata?.videoMappings || [];
 
@@ -714,8 +714,8 @@ async function play(params) {
     try {
       const vodId = params.vodId || "";
       if (vodId) {
-        const metadata = await OmniBox.getDriveMetadata(vodId);
-        if (metadata && metadata.scrapeData && metadata.videoMappings) {
+          const metadata = await OmniBox.getScrapeMetadata(vodId);
+          if (metadata && metadata.scrapeData && metadata.videoMappings) {
           const formattedFileId = `${vodId}|${mainPlayId}`;
           let matchedMapping = null;
           for (const mapping of metadata.videoMappings) {
