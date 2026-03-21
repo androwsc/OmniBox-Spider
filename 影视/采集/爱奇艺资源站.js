@@ -2,7 +2,7 @@
 // @author OpenClaw Bingbu + 梦
 // @description 刮削：支持，弹幕：支持，嗅探：支持，观看记录：支持，广告：菠菜
 // @dependencies: axios
-// @version 1.1.0
+// @version 1.1.1
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/采集/爱奇艺资源站.js
 
 /**
@@ -362,7 +362,10 @@ async function enrichPlaySourcesWithMetadata(playSources, resourceId) {
           `[刮削回填] 命中映射 source=${source.name}, oldEpisode=${ep.name}, fileId=${lookupKey}, season=${mapping.seasonNumber ?? ""}, episode=${mapping.episodeNumber ?? ""}, tmdbEpisodeName=${text(mapping.episodeName)}`
         );
 
-        if (mapping.episodeName) ep.episodeName = mapping.episodeName;
+        if (mapping.episodeName) {
+          const epName = mapping.episodeNumber + "." + mapping.episodeName;
+          ep.episodeName = epName;
+        }
         if (mapping.episodeOverview) ep.episodeOverview = mapping.episodeOverview;
         if (mapping.episodeAirDate) ep.episodeAirDate = mapping.episodeAirDate;
         if (mapping.episodeStillPath) ep.episodeStillPath = mapping.episodeStillPath;
@@ -370,7 +373,10 @@ async function enrichPlaySourcesWithMetadata(playSources, resourceId) {
         if (mapping.episodeRuntime != null) ep.episodeRuntime = mapping.episodeRuntime;
         if (mapping.seasonNumber != null) ep._seasonNumber = mapping.seasonNumber;
         if (mapping.episodeNumber != null) ep._episodeNumber = mapping.episodeNumber;
-        if (mapping.episodeName) ep.name = mapping.episodeName;
+        if (mapping.episodeName) {
+          const epName = mapping.episodeNumber + "." + mapping.episodeName;
+          ep.name = epName;
+        }
       }
 
       const hasOrdering = (source.episodes || []).some((ep) => ep._episodeNumber != null);

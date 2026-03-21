@@ -1,7 +1,7 @@
 // @name 电影天堂
 // @author 
 // @description 刮削：支持，弹幕：支持，嗅探：支持
-// @version 1.0.4
+// @version 1.0.5
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/采集/电影天堂.js
 const OmniBox = require("omnibox_sdk");
 
@@ -553,7 +553,8 @@ function buildScrapedEpisodeName(scrapeData, mapping, originalName) {
         return originalName;
     }
     if (mapping.episodeName) {
-        return mapping.episodeName;
+        const epName = mapping.episodeNumber + "." + mapping.episodeName;
+        return epName;
     }
     if (scrapeData && Array.isArray(scrapeData.episodes)) {
         const hit = scrapeData.episodes.find((ep) => ep.episodeNumber === mapping.episodeNumber && ep.seasonNumber === mapping.seasonNumber);

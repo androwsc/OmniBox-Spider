@@ -2,7 +2,7 @@
 // @author W.Q, @wujiwanmei, @lucky_TJQ, tcxp, @shortai
 // @description 刮削：支持，弹幕：支持，嗅探：支持
 // @dependencies: axios, crypto
-// @version 1.0.5
+// @version 1.0.6
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/采集/3Q影视.js
 
 /**
@@ -842,7 +842,8 @@ const buildScrapedEpisodeName = (scrapeData, mapping, originalName) => {
         return originalName;
     }
     if (mapping.episodeName) {
-        return mapping.episodeName;
+        const epName = mapping.episodeNumber + "." + mapping.episodeName;
+        return epName;
     }
     if (scrapeData && Array.isArray(scrapeData.episodes)) {
         const hit = scrapeData.episodes.find(
