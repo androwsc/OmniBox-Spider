@@ -2,7 +2,7 @@
 // @author 
 // @description 刮削：支持，弹幕：支持，嗅探：支持
 // @dependencies: axios, cheerio
-// @version 1.0.5
+// @version 1.0.6
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/网盘/木偶.js
 
 // 引入 OmniBox SDK
@@ -835,7 +835,7 @@ async function detail(params, context) {
             continue;
           }
 
-          const formattedFileId = fileId ? `${shareURL}|${fileId}` : "";
+          const formattedFileId = fileId ? `${shareURL}|${fileId}|${videoId}` : "";
 
           OmniBox.log("info", formattedFileId)
 
@@ -1096,6 +1096,7 @@ async function play(params, context) {
     }
     const shareURL = parts[0] || "";
     const fileId = parts[1] || "";
+    const videoId = parts[2] || "";
 
     if (!shareURL || !fileId) {
       throw new Error("分享链接或文件ID不能为空");
@@ -1181,7 +1182,6 @@ async function play(params, context) {
     try {
       const sourceId = context.sourceId;
       if (sourceId) {
-        const vodId = params.vodId || shareURL;
         const title = params.title || scrapeTitle || shareURL;
         const pic = params.pic || scrapePic || "";
 
