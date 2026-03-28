@@ -1,5 +1,6 @@
 ## 友情链接
 
+- [官方文档](https://omnibox-doc.pages.dev/) - OmniBox 官方文档站，包含使用指南与爬虫开发文档，是编写与维护 OmniBox 爬虫源的权威参考入口。
 - [OmniBox-Spider-Skills](https://github.com/Silent1566/OmniBox-Spider-Skills) - 面向 OmniBox 爬虫开发的技能仓库，提供可复用的技能说明、规则约束与结构化参考文档，帮助开发者更快完成爬虫源的编写、调试、回归检查与持续维护。
 
 ## Star History
