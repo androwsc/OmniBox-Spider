@@ -2,7 +2,8 @@
 // @author 梦
 // @description 资源网：详情与资源列表已接入；支持磁力/网盘资源展示
 // @dependencies cheerio
-// @version 1.2.4
+// @version 1.2.5
+// @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/磁力/不太灵.js
 
 const OmniBox = require("omnibox_sdk");
 const runner = require("spider_runner");
