@@ -2,7 +2,7 @@
 // @author lampon
 // @description
 // @dependencies axios
-// @version 1.0.0
+// @version 1.1.0
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/网盘/影巢.js
 
 const OmniBox = require("omnibox_sdk");
@@ -47,6 +47,21 @@ const HDHIVE_PROXY_URL = process.env.HDHIVE_PROXY_URL || "";
 const PANCHECK_API = process.env.PANCHECK_API || "";
 const PANCHECK_ENABLED = true;
 const PANCHECK_PLATFORMS = process.env.PANCHECK_PLATFORMS || "quark";
+// 读取环境变量：支持多个网盘类型，用分号分割；仅这些网盘类型启用多线路
+const DRIVE_TYPE_CONFIG = (process.env.DRIVE_TYPE_CONFIG || "quark;uc")
+  .split(";")
+  .map((t) => t.trim().toLowerCase())
+  .filter(Boolean);
+// 读取环境变量：线路名称和顺序，用分号分割
+const SOURCE_NAMES_CONFIG = (process.env.SOURCE_NAMES_CONFIG || "本地代理;服务端代理;直连")
+  .split(";")
+  .map((s) => s.trim())
+  .filter(Boolean);
+// 读取环境变量：详情页播放线路的网盘排序顺序。仅作用于 detail() 里的播放线路。
+const DRIVE_ORDER = (process.env.DRIVE_ORDER || "baidu;tianyi;quark;uc;115;xunlei;ali;123pan")
+  .split(";")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
 // ==================== 配置区域结束 ====================
 
 let tmdbKeyCache = "";
@@ -250,6 +265,36 @@ function asInt(v, d = 0) {
 
 function getTypeNameByMediaType(mediaType) {
   return mediaType === "movie" ? "电影资源" : "剧集资源";
+}
+
+function inferDriveTypeFromSourceName(name = "") {
+  const raw = String(name || "").toLowerCase();
+  if (raw.includes("百度")) return "baidu";
+  if (raw.includes("天翼")) return "tianyi";
+  if (raw.includes("夸克")) return "quark";
+  if (raw === "uc" || raw.includes("uc")) return "uc";
+  if (raw.includes("115")) return "115";
+  if (raw.includes("迅雷")) return "xunlei";
+  if (raw.includes("阿里")) return "ali";
+  if (raw.includes("123")) return "123pan";
+  return raw;
+}
+
+function sortPlaySourcesByDriveOrder(playSources = []) {
+  if (!Array.isArray(playSources) || playSources.length <= 1 || DRIVE_ORDER.length === 0) {
+    return playSources;
+  }
+  const orderMap = new Map(DRIVE_ORDER.map((name, index) => [name, index]));
+  return [...playSources].sort((a, b) => {
+    const aBase = String(a?.baseSourceName || a?.name || "");
+    const bBase = String(b?.baseSourceName || b?.name || "");
+    const aType = inferDriveTypeFromSourceName(aBase);
+    const bType = inferDriveTypeFromSourceName(bBase);
+    const aOrder = orderMap.has(aType) ? orderMap.get(aType) : Number.MAX_SAFE_INTEGER;
+    const bOrder = orderMap.has(bType) ? orderMap.get(bType) : Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return 0;
+  });
 }
 
 function isVideoFile(file) {
@@ -1336,14 +1381,14 @@ async function detail(params, context) {
 
     const source = safeString(params?.source || "");
     let sourceNames = [sourceName];
-    if (driveInfo?.driveType === "quark" || driveInfo?.driveType === "uc") {
-      sourceNames = ["服务端代理", "本地代理", "直连"];
+    if (DRIVE_TYPE_CONFIG.includes(String(driveInfo?.driveType || "").toLowerCase())) {
+      sourceNames = [...SOURCE_NAMES_CONFIG];
       if (source === "web") {
         sourceNames = sourceNames.filter((name) => name !== "本地代理");
       }
     }
 
-    const playSources = [];
+    let playSources = [];
     for (const lineName of sourceNames) {
       const episodes = [];
       for (const file of allVideoFiles) {
@@ -1417,11 +1462,24 @@ async function detail(params, context) {
       }
 
       if (episodes.length > 0) {
+        const baseLineName = sourceName;
+        const finalLineName =
+          DRIVE_TYPE_CONFIG.includes(String(driveInfo?.driveType || "").toLowerCase())
+            ? `${baseLineName}-${lineName}`
+            : baseLineName;
         playSources.push({
-          name: lineName,
+          name: finalLineName,
+          baseSourceName: baseLineName,
           episodes,
         });
       }
+    }
+
+    if (playSources.length > 1 && DRIVE_ORDER.length > 0) {
+      playSources = sortPlaySourcesByDriveOrder(playSources).map((item) => ({
+        name: item.name,
+        episodes: item.episodes,
+      }));
     }
 
     let tmdbTitle = payload.title || scrapeData?.title || "";
@@ -1560,10 +1618,19 @@ async function play(params, context) {
       );
     }
 
+    let routeType = safeString(flag);
+    if (routeType && routeType.includes("-")) {
+      const parts = routeType.split("-");
+      routeType = safeString(parts[parts.length - 1]);
+    }
+    if (!routeType) {
+      routeType = safeString(params?.source) === "web" ? "服务端代理" : "直连";
+    }
+
     const playInfo = await OmniBox.getDriveVideoPlayInfo(
       shareURL,
       fileId,
-      "服务端代理",
+      routeType,
     );
     if (
       !playInfo ||
