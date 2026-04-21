@@ -2,7 +2,7 @@
 # @name 人人电影
 # @author 梦
 # @description 影视站：https://www.rrdynb.com/ ，支持首页、分类、搜索、详情与网盘线路提取（Python版）
-# @version 1.1.6
+# @version 1.1.7
 # @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/网盘/人人电影.py
 
 import json
@@ -97,14 +97,14 @@ def clean_multiline_html(text: str) -> str:
 
 def normalize_vod_title(text: str) -> str:
     value = str(text or "")
+    value = html.unescape(value)
     value = re.sub(r"</?font[^>]*>", "", value, flags=re.I)
     value = re.sub(r"</?fontcolor[^>]*>", "", value, flags=re.I)
     value = re.sub(r"</?[^>]+>", "", value, flags=re.I)
     value = clean_html(value)
     value = re.split(r"(?:百度云|百度网盘|夸克|阿里云盘|阿里网盘|网盘下载|下载|中字)", value, maxsplit=1)[0].strip()
     value = value.strip("《》[]【】()（） ")
-    value = re.sub(r"\s+", "", value)
-    return value or clean_html(text)
+    return value or clean_html(html.unescape(text))
 
 
 def uniq(seq):
