@@ -1,8 +1,8 @@
-// @name Webdav
+// @name WebDAV
 // @author lampon
 // @description 
 // @version 1.0.0
-// @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/影视库/Webdav.js
+// @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/影视库/WebDAV.js
 // @dependencies: crypto
 
 /**
