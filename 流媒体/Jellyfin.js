@@ -1,8 +1,9 @@
 // @name Jellyfin
 // @author Copilot
-// @description 直连 Jellyfin 接口（兼容 Emby API），填好服务器地址、账号密码即可使用。支持多服务器、多库、剧集/电影播放
+// @description 直连 Jellyfin/Emby 接口，填好服务器地址、账号密码即可使用。支持多服务器、多库、剧集/电影播放
 // @dependencies: axios
-// @version 1.0.1
+// @version 1.3.0
+// @indexs 影视
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/流媒体/Jellyfin.js
 
 /**
@@ -23,17 +24,22 @@
 const axios = require("axios");
 const http = require("http");
 const https = require("https");
-const OmniBox = require("omnibox_sdk");
+
+let OmniBox;
+try { OmniBox = require("omnibox_sdk"); }
+catch (_) { OmniBox = { log(l, m) { console.log(`[${l}] ${m}`); } }; }
 
 // ==================== 账号配置（直接在这里填写你的 Jellyfin 信息）====================
-let accounts = [
+const defaultAccounts = [
   {
     server: "", // 例：http://192.168.1.100:8096
     username: "", // Jellyfin 用户名
     password: "", // Jellyfin 密码
-    name: "我的Jellyfin",
+    name: "ServerName",
   },
 ];
+
+let accounts = [...defaultAccounts];
 
 // ==================== 设备配置 ====================
 const DEVICE_PROFILE = {
@@ -213,27 +219,48 @@ function parseId(compositeId) {
 }
 
 /**
- * Jellyfin 登录认证
- * 关键：Jellyfin 要求使用 X-Emby-Authorization 头，且认证信息在 JSON body 中
+ * Jellyfin 登录认证（含缓存）
+ * 两层缓存：内存 + OmniBox 持久化，减少重复登录请求
  */
 async function jellyfinLogin(account) {
   const baseUrl = normalizeServer(account.server);
-  if (!baseUrl) {
-    throw new Error("Jellyfin 服务器地址未配置");
+  if (!baseUrl) throw new Error("Jellyfin 服务器地址未配置");
+
+  const CACHE_PREFIX = "jf:login:";
+  const CACHE_TTL = 86400 * 7; // 7 天
+
+  // 内存缓存
+  if (account._loginCache && account._loginCache.baseUrl === baseUrl) {
+    return account._loginCache;
   }
 
+  // 持久化缓存
+  const cacheKey = `${CACHE_PREFIX}${baseUrl}_${account.username}`;
+  try {
+    const cached = await OmniBox.getCache(cacheKey);
+    if (cached) {
+      const p = JSON.parse(cached);
+      // 快速验证 token 是否仍有效
+      const testAuth = buildAuthHeader(p.deviceId, p.token);
+      const test = await axiosInstance.get(`${baseUrl}/emby/Users/${p.userId}`, {
+        headers: { "X-Emby-Authorization": testAuth, Accept: "application/json" },
+        timeout: 3000,
+      });
+      if (test.status === 200) {
+        logInfo("命中登录缓存");
+        account._loginCache = { ...p, baseUrl, authHeader: testAuth };
+        return account._loginCache;
+      }
+    }
+  } catch (_) {}
+
+  // 重新登录
   const deviceId = generateUUID();
   const authHeader = buildAuthHeader(deviceId);
 
   const data = await requestJson(
     `${baseUrl}/emby/Users/AuthenticateByName`,
-    {
-      method: "POST",
-      data: {
-        Username: account.username,
-        Pw: account.password,
-      },
-    },
+    { method: "POST", data: { Username: account.username, Pw: account.password } },
     authHeader
   );
 
@@ -241,13 +268,20 @@ async function jellyfinLogin(account) {
   const userId = data.User.Id;
   const authedAuthHeader = buildAuthHeader(deviceId, token);
 
-  return { token, userId, baseUrl, authHeader: authedAuthHeader, deviceId };
+  const result = { token, userId, baseUrl, authHeader: authedAuthHeader, deviceId };
+  account._loginCache = result;
+
+  try { await OmniBox.setCache(cacheKey, JSON.stringify({ token, userId, deviceId }), CACHE_TTL); } catch (_) {}
+
+  return result;
 }
 
 // ==================== Handler 实现 ====================
 
 module.exports = { home, category, detail, search, play };
-const runner = require("spider_runner");
+let runner;
+try { runner = require("spider_runner"); }
+catch (_) { runner = { run() {} }; }
 runner.run(module.exports);
 
 /**
@@ -389,9 +423,10 @@ async function detail(params) {
       const { account, itemId, accountIndex } = parseId(id);
       const { userId, baseUrl, authHeader } = await jellyfinLogin(account);
 
-      // 获取视频基本信息
-      const url = `${baseUrl}/emby/Users/${userId}/Items/${itemId}`;
-      const info = await requestJson(url, {}, authHeader);
+      // 获取视频基本信息（含媒体流、时长、评分）
+      const infoUrl = `${baseUrl}/emby/Users/${userId}/Items/${itemId}?` +
+        `Fields=BasicSyncInfo,CommunityRating,MediaStreams,Overview,People,Studios,RunTimeTicks,Path`;
+      const info = await requestJson(infoUrl, {}, authHeader);
 
       const vod = {
         vod_id: id,
@@ -420,6 +455,27 @@ async function detail(params) {
         } else {
           vod.type_name = genres;
         }
+      }
+
+      // 音频语言
+      if (info.MediaStreams && Array.isArray(info.MediaStreams)) {
+        vod.vod_lang = Array.from(
+          new Set(
+            info.MediaStreams.filter(s => s.Type === "Audio" && s.Language).map(s => s.Language)
+          )
+        ).join(" / ");
+      }
+
+      // 时长
+      if (info.RunTimeTicks) {
+        const mins = Math.floor(info.RunTimeTicks / 600000000);
+        const hours = Math.floor(mins / 60);
+        vod.vod_time = hours > 0 ? `${hours}时${mins % 60}分` : `${mins}分`;
+      }
+
+      // 评分
+      if (info.CommunityRating) {
+        vod.vod_douban_score = String(info.CommunityRating);
       }
 
       // 构建播放源
@@ -579,7 +635,7 @@ async function search(params) {
   return {
     list,
     page: pg,
-    pagecount: list.length > 0 ? pg + 1 : pg,
+    pagecount: pg,
     total: list.length,
   };
 }
@@ -587,9 +643,10 @@ async function search(params) {
 /**
  * 播放 - 获取 Jellyfin 视频的直接播放地址
  */
-async function play(params) {
+async function play(params, context) {
   const rawPlayId = params.playId || params.id || "";
-  logInfo("准备播放", { playId: rawPlayId });
+  const from = context?.from || "web";
+  logInfo("准备播放", { playId: rawPlayId, from });
 
   try {
     const { account, itemId } = parseId(rawPlayId);
@@ -638,7 +695,7 @@ async function play(params) {
   } catch (e) {
     logError("播放解析失败", e);
     return {
-      parse: 0,
+      parse: 1,
       urls: [],
       flag: String(params.flag || "Jellyfin"),
       header: {},
