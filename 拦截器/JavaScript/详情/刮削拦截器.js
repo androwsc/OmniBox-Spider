@@ -99,6 +99,23 @@ function collectVideoFilesForScraping(item) {
   return fileList;
 }
 
+function buildMergedVideoFilesForScraping(items = []) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const item of items) {
+    const videoFiles = collectVideoFilesForScraping(item);
+    for (const file of videoFiles) {
+      const fileId = String(file?.file_id || file?.fid || "");
+      if (!fileId || seen.has(fileId)) continue;
+      seen.add(fileId);
+      merged.push(file);
+    }
+  }
+
+  return merged;
+}
+
 /**
  * 作用: 将刮削结果应用回视频项(参考木偶.js detail() 中构建vodDetail的逻辑)
  */
@@ -185,52 +202,60 @@ async function afterDetail(params) {
     return data;
   }
 
+  const scrapeItems = data.list.filter((item) => item && typeof item === "object" && item.vod_id);
+  const primaryItem = scrapeItems.find((item) => collectVideoFilesForScraping(item).length > 0);
+
+  if (!primaryItem) {
+    return data;
+  }
+
+  const videoId = String(primaryItem.vod_id || "");
+  const vodName = String(primaryItem.vod_name || "");
+  const mergedVideoFiles = buildMergedVideoFilesForScraping(scrapeItems);
+
+  if (!videoId || mergedVideoFiles.length === 0) {
+    return data;
+  }
+
+  let metadata = null;
+
+  try {
+    let scrapeCompleted = false;
+
+    if (!forceRefresh) {
+      try {
+        const existing = await OmniBox.getScrapeMetadata(videoId);
+        if (existing?.scrapeData && existing.scrapeData.title) {
+          metadata = existing;
+          scrapeCompleted = true;
+          await OmniBox.log("info", "刮削拦截器: 命中已有刮削数据 videoId=" + videoId);
+        }
+      } catch (_) { /* 忽略缓存读取错误 */ }
+    }
+
+    if (!scrapeCompleted) {
+      await OmniBox.log("info", "刮削拦截器: 开始统一刮削 videoId=" + videoId + " 文件数=" + mergedVideoFiles.length + " 条目数=" + scrapeItems.length);
+      await OmniBox.processScraping(videoId, vodName, vodName, mergedVideoFiles);
+      metadata = await OmniBox.getScrapeMetadata(videoId);
+    }
+  } catch (error) {
+    await OmniBox.log("warn", "刮削拦截器: 统一刮削失败 videoId=" + videoId + " " + error.message);
+    return data;
+  }
+
+  if (!metadata?.scrapeData || !metadata.scrapeData.title) {
+    return data;
+  }
+
+  await OmniBox.log("info", "刮削拦截器: 统一刮削成功 videoId=" + videoId + " 标题=" + metadata.scrapeData.title);
+
   const results = [];
   for (const item of data.list) {
     if (!item || typeof item !== "object") {
       results.push(item);
       continue;
     }
-
-    const videoId = String(item.vod_id || "");
-    const vodName = String(item.vod_name || "");
-    const videoFiles = collectVideoFilesForScraping(item);
-
-    if (!videoId || videoFiles.length === 0) {
-      results.push(item);
-      continue;
-    }
-
-    try {
-      let scrapeCompleted = false;
-
-      if (!forceRefresh) {
-        try {
-          const existing = await OmniBox.getScrapeMetadata(videoId);
-          if (existing?.scrapeData && existing.scrapeData.title) {
-            scrapeCompleted = true;
-            await OmniBox.log("info", "刮削拦截器: 命中已有刮削数据 videoId=" + videoId);
-          }
-        } catch (_) { /* 忽略缓存读取错误 */ }
-      }
-
-      if (!scrapeCompleted) {
-        await OmniBox.log("info", "刮削拦截器: 开始刮削 videoId=" + videoId + " 文件数=" + videoFiles.length);
-        await OmniBox.processScraping(videoId, vodName, vodName, videoFiles);
-      }
-
-      const metadata = await OmniBox.getScrapeMetadata(videoId);
-      if (metadata?.scrapeData && metadata.scrapeData.title) {
-        const next = applyScrapeData(item, metadata.scrapeData, metadata.videoMappings || []);
-        await OmniBox.log("info", "刮削拦截器: 刮削成功 videoId=" + videoId + " 标题=" + metadata.scrapeData.title);
-        results.push(next);
-      } else {
-        results.push(item);
-      }
-    } catch (error) {
-      await OmniBox.log("warn", "刮削拦截器: 刮削失败 videoId=" + videoId + " " + error.message);
-      results.push(item);
-    }
+    results.push(applyScrapeData(item, metadata.scrapeData, metadata.videoMappings || []));
   }
 
   data.list = results;
